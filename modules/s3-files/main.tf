@@ -142,7 +142,11 @@ resource "aws_s3files_file_system" "wordpress" {
     Name = "${var.resource_prefix}-wordpress"
   }
 
-  depends_on = [aws_iam_role_policy.s3_files_bucket]
+  depends_on = [
+    aws_iam_role_policy.s3_files_bucket,
+    aws_s3_bucket_public_access_block.app_files,
+    aws_s3_bucket_versioning.app_files,
+  ]
 }
 
 resource "aws_s3files_access_point" "wordpress" {
