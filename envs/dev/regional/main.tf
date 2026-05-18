@@ -3,4 +3,6 @@ module "app" {
 
   app_name    = local.app_name
   environment = local.environment
+
+  aws_cli_profile = var.profile
 }

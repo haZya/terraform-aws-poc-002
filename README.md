@@ -14,7 +14,12 @@ envs/staging/global/        # GitHub-deployed staging shared/global resources
 envs/staging/regional/      # GitHub-deployed staging regional app resources
 envs/prod/global/           # GitHub-deployed production shared/global resources
 envs/prod/regional/         # GitHub-deployed production regional app resources
-modules/app/                # reusable regional app infrastructure
+modules/app/                # reusable regional app composition module
+modules/network/            # VPC, subnets, routes, and VPC endpoints
+modules/s3-files/           # S3 bucket plus S3 Files resources
+modules/database/           # MariaDB and database networking
+modules/wordpress-image/    # ECR repository and image mirroring
+modules/wordpress-service/  # ECS Fargate service and load balancer
 ```
 
 ## Stack Boundaries
@@ -24,6 +29,20 @@ Put resources that are deployed once per environment in `global/`. Examples: IAM
 Put resources that are deployed once per region in `regional/`.
 
 Global and regional stacks use separate state files. Deploy global first when regional resources depend on shared resources. Destroy regional first, then global.
+
+## WordPress S3 Files App
+
+The regional `modules/app` module composes focused child modules to deploy the WordPress S3 Files demo equivalent in Terraform:
+
+- VPC with public, private, and isolated subnets, using VPC endpoints instead of NAT.
+- MariaDB in isolated subnets with an RDS-managed Secrets Manager master password.
+- S3 bucket plus S3 Files file system, access point, and mount targets.
+- Private ECR repository seeded from `public.ecr.aws/bitnami/wordpress:latest`.
+- ECS Fargate service behind an internet-facing Application Load Balancer, mounting S3 Files at `/bitnami/wordpress`.
+
+Terraform mirrors the public WordPress image into private ECR during apply with `aws ecr get-login-password`, `docker pull`, `docker tag`, and `docker push`. Local applies therefore require AWS CLI and Docker. For dev, the local `profile` variable is passed to that AWS CLI command; CI uses the OIDC-provided AWS environment credentials.
+
+The module keeps the CDK demo's destructive defaults: S3/ECR force delete, RDS final snapshot skipped, and WordPress admin password defaulted to `change-me-admin-password`. Override the module variables before treating this as production data.
 
 ## Bootstrap Order
 
