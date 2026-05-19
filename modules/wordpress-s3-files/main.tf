@@ -12,7 +12,7 @@ locals {
 }
 
 module "network" {
-  source = "../network"
+  source = "./modules/network"
 
   resource_prefix = local.resource_prefix
   vpc_cidr        = var.vpc_cidr
@@ -20,7 +20,7 @@ module "network" {
 }
 
 module "s3_files" {
-  source = "../s3-files"
+  source = "./modules/s3-files"
 
   resource_prefix          = local.resource_prefix
   bucket_name              = local.s3_files_bucket_name
@@ -33,7 +33,7 @@ module "s3_files" {
 }
 
 module "database" {
-  source = "../database"
+  source = "./modules/database"
 
   resource_prefix            = local.resource_prefix
   vpc_id                     = module.network.vpc_id
@@ -52,7 +52,7 @@ module "database" {
 }
 
 module "wordpress_image" {
-  source = "../wordpress-image"
+  source = "./modules/wordpress-image"
 
   resource_prefix          = local.resource_prefix
   force_destroy_data       = var.force_destroy_data
@@ -64,7 +64,7 @@ module "wordpress_image" {
 }
 
 module "wordpress_service" {
-  source = "../wordpress-service"
+  source = "./modules/wordpress-service"
 
   resource_prefix            = local.resource_prefix
   vpc_id                     = module.network.vpc_id

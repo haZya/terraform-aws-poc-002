@@ -14,12 +14,9 @@ envs/staging/global/        # GitHub-deployed staging shared/global resources
 envs/staging/regional/      # GitHub-deployed staging regional app resources
 envs/prod/global/           # GitHub-deployed production shared/global resources
 envs/prod/regional/         # GitHub-deployed production regional app resources
-modules/app/                # reusable regional app composition module
-modules/network/            # VPC, subnets, routes, and VPC endpoints
-modules/s3-files/           # S3 bucket plus S3 Files resources
-modules/database/           # MariaDB and database networking
-modules/wordpress-image/    # ECR repository and image mirroring
-modules/wordpress-service/  # ECS Fargate service and load balancer
+modules/wordpress-s3-files/  # WordPress on ECS with S3 Files
+modules/file-processing/     # regional secure file upload and processing pipeline
+modules/file-processing-global/ # global processed uploads bucket and CloudFront
 ```
 
 ## Stack Boundaries
@@ -30,9 +27,11 @@ Put resources that are deployed once per region in `regional/`.
 
 Global and regional stacks use separate state files. Deploy global first when regional resources depend on shared resources. Destroy regional first, then global.
 
-## WordPress S3 Files App
+## Regional Apps
 
-The regional `modules/app` module composes focused child modules to deploy the WordPress S3 Files demo equivalent in Terraform:
+The regional stack composes two app modules.
+
+`modules/wordpress-s3-files` deploys the WordPress S3 Files demo equivalent in Terraform:
 
 - VPC with public, private, and isolated subnets, using VPC endpoints instead of NAT.
 - MariaDB in isolated subnets with an RDS-managed Secrets Manager master password.
@@ -42,7 +41,26 @@ The regional `modules/app` module composes focused child modules to deploy the W
 
 Terraform mirrors the public WordPress image into private ECR during apply with `aws ecr get-login-password`, `docker pull`, `docker tag`, and `docker push`. Local applies therefore require AWS CLI and Docker. For dev, the local `profile` variable is passed to that AWS CLI command; CI uses the OIDC-provided AWS environment credentials.
 
-The module keeps the CDK demo's destructive defaults: S3/ECR force delete, RDS final snapshot skipped, and WordPress admin password defaulted to `change-me-admin-password`. Override the module variables before treating this as production data.
+The module have destructive defaults: S3/ECR force delete, RDS final snapshot skipped, and WordPress admin password defaulted to `change-me-admin-password`. Override the module variables before treating this as production data.
+
+`modules/file-processing-global` deploys the file-processing global/shared resources:
+
+- Processed-upload S3 bucket.
+- CloudFront distribution with Origin Access Control in front of the processed-upload bucket.
+
+`modules/file-processing` deploys the regional file-processing workflow:
+
+- Private staging S3 bucket with EventBridge object-created events.
+- DynamoDB tables for uploads, upload relations, and WebSocket connections.
+- GuardDuty Malware Protection for S3 on the staging bucket.
+- API Gateway WebSocket API with Lambda authorizer and connection handler.
+- EventBridge rules, DLQs, Lambda handlers, and an Express Step Functions workflow for validation, Lambda-based copy to the global bucket, image transform, metadata, cleanup, and status fan-out.
+
+The regional module writes processed files to the global bucket by deterministic name: app, environment, and account ID. Deploy global first so the processed bucket and CloudFront distribution exist before regional workflows process files.
+
+Terraform packages the embedded TypeScript Lambda sources from `modules/file-processing/lambda/` during apply. Local and CI applies therefore require Node.js and npm. The module installs dependencies in `modules/file-processing/`, bundles handlers with `esbuild`, and packages `sharp` as a Linux x64 Lambda dependency for image transforms.
+
+The PoC creates `GeneratePresignedPostHandler` but does not expose it through an API Gateway route. The Terraform module outputs `file_processing_generate_presigned_post_lambda_name` so you can wire it to an HTTP API or application backend later.
 
 ## Bootstrap Order
 
