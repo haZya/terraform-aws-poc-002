@@ -67,7 +67,7 @@ module "connection_lambda" {
   runtime            = var.lambda_runtime
   architectures      = var.lambda_architectures
   log_retention_days = var.log_retention_days
-  policy_json        = data.aws_iam_policy_document.connection_handler.json
+  policy_jsons       = [data.aws_iam_policy_document.connection_handler.json]
   environment = {
     CONNECTIONS_TABLE_NAME = aws_dynamodb_table.connections.name
   }

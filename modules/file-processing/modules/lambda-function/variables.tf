@@ -52,8 +52,8 @@ variable "include_sharp" {
   default     = false
 }
 
-variable "policy_json" {
-  description = "Optional inline IAM policy JSON for the Lambda role."
-  type        = string
-  default     = null
+variable "policy_jsons" {
+  description = "Inline IAM policy JSON documents for the Lambda role. Use a list so policy count is known even when JSON contains apply-time ARNs."
+  type        = list(string)
+  default     = []
 }

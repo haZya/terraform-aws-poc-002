@@ -7,7 +7,7 @@ module "register_upload" {
   runtime            = var.lambda_runtime
   architectures      = var.lambda_architectures
   log_retention_days = var.log_retention_days
-  policy_json        = data.aws_iam_policy_document.register_upload.json
+  policy_jsons       = [data.aws_iam_policy_document.register_upload.json]
   environment = {
     UPLOADS_TABLE_NAME          = var.uploads_table_name
     UPLOAD_RELATIONS_TABLE_NAME = var.upload_relations_table_name
@@ -23,7 +23,7 @@ module "generate_presigned_post" {
   runtime            = var.lambda_runtime
   architectures      = var.lambda_architectures
   log_retention_days = var.log_retention_days
-  policy_json        = data.aws_iam_policy_document.generate_presigned_post.json
+  policy_jsons       = [data.aws_iam_policy_document.generate_presigned_post.json]
   environment = {
     UPLOADS_TABLE_NAME          = var.uploads_table_name
     UPLOAD_RELATIONS_TABLE_NAME = var.upload_relations_table_name
@@ -40,7 +40,7 @@ module "validate_file" {
   runtime            = var.lambda_runtime
   architectures      = var.lambda_architectures
   log_retention_days = var.log_retention_days
-  policy_json        = data.aws_iam_policy_document.validate_file.json
+  policy_jsons       = [data.aws_iam_policy_document.validate_file.json]
   environment = {
     UPLOADS_TABLE_NAME          = var.uploads_table_name
     UPLOAD_RELATIONS_TABLE_NAME = var.upload_relations_table_name
@@ -67,7 +67,7 @@ module "copy_to_upload_bucket" {
   runtime            = var.lambda_runtime
   architectures      = var.lambda_architectures
   log_retention_days = var.log_retention_days
-  policy_json        = data.aws_iam_policy_document.copy_to_upload_bucket.json
+  policy_jsons       = [data.aws_iam_policy_document.copy_to_upload_bucket.json]
   environment = {
     UPLOAD_BUCKET = var.upload_bucket_id
   }
@@ -82,7 +82,7 @@ module "transform_image" {
   runtime            = var.lambda_runtime
   architectures      = var.lambda_architectures
   log_retention_days = var.log_retention_days
-  policy_json        = data.aws_iam_policy_document.transform_image.json
+  policy_jsons       = [data.aws_iam_policy_document.transform_image.json]
   timeout            = 20
   memory_size        = 512
   include_sharp      = true
@@ -100,7 +100,7 @@ module "add_metadata" {
   runtime            = var.lambda_runtime
   architectures      = var.lambda_architectures
   log_retention_days = var.log_retention_days
-  policy_json        = data.aws_iam_policy_document.add_metadata.json
+  policy_jsons       = [data.aws_iam_policy_document.add_metadata.json]
   environment = {
     UPLOADS_TABLE_NAME          = var.uploads_table_name
     UPLOAD_RELATIONS_TABLE_NAME = var.upload_relations_table_name
@@ -116,7 +116,7 @@ module "update_upload_status" {
   runtime            = var.lambda_runtime
   architectures      = var.lambda_architectures
   log_retention_days = var.log_retention_days
-  policy_json        = data.aws_iam_policy_document.update_status.json
+  policy_jsons       = [data.aws_iam_policy_document.update_status.json]
   environment = {
     UPLOADS_TABLE_NAME          = var.uploads_table_name
     UPLOAD_RELATIONS_TABLE_NAME = var.upload_relations_table_name
@@ -132,7 +132,7 @@ module "cleanup_replaced_upload" {
   runtime            = var.lambda_runtime
   architectures      = var.lambda_architectures
   log_retention_days = var.log_retention_days
-  policy_json        = data.aws_iam_policy_document.cleanup_replaced_upload.json
+  policy_jsons       = [data.aws_iam_policy_document.cleanup_replaced_upload.json]
   environment = {
     UPLOADS_TABLE_NAME          = var.uploads_table_name
     UPLOAD_RELATIONS_TABLE_NAME = var.upload_relations_table_name
@@ -149,7 +149,7 @@ module "emit_upload_status" {
   runtime            = var.lambda_runtime
   architectures      = var.lambda_architectures
   log_retention_days = var.log_retention_days
-  policy_json        = data.aws_iam_policy_document.emit_upload_status.json
+  policy_jsons       = [data.aws_iam_policy_document.emit_upload_status.json]
   environment = {
     CONNECTIONS_TABLE_NAME = var.connections_table_name
     WEBSOCKET_API_ENDPOINT = var.websocket_callback_url

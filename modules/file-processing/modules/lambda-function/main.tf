@@ -53,11 +53,11 @@ resource "aws_iam_role_policy_attachment" "basic_execution" {
 }
 
 resource "aws_iam_role_policy" "custom" {
-  count = var.policy_json == null ? 0 : 1
+  count = length(var.policy_jsons)
 
-  name   = "${var.function_name}-policy"
+  name   = length(var.policy_jsons) == 1 ? "${var.function_name}-policy" : "${var.function_name}-policy-${count.index}"
   role   = aws_iam_role.lambda.id
-  policy = var.policy_json
+  policy = var.policy_jsons[count.index]
 }
 
 resource "aws_cloudwatch_log_group" "lambda" {
