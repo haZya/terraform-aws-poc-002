@@ -64,7 +64,7 @@ The PoC creates `GeneratePresignedPostHandler` but does not expose it through an
 
 ## Bootstrap Order
 
-All bootstrap roots use local state. Use a fixed state account ID up front so the future state bucket name is known before the bucket exists.
+All bootstrap roots include an S3 backend block with placeholder values, but the first bootstrap run must initialize with `-backend=false` because the remote state bucket does not exist yet. That first run uses local state. Use a fixed state account ID up front so the future state bucket name is known before the bucket exists.
 
 With the default convention, the bucket name is:
 
@@ -84,7 +84,7 @@ PowerShell:
 
 ```powershell
 Copy-Item bootstrap/accounts/staging/terraform.tfvars.example bootstrap/accounts/staging/terraform.tfvars
-terraform -chdir=bootstrap/accounts/staging init
+terraform -chdir=bootstrap/accounts/staging init -backend=false
 terraform -chdir=bootstrap/accounts/staging apply
 terraform -chdir=bootstrap/accounts/staging output github_actions_role_arn
 ```
@@ -93,7 +93,7 @@ sh/bash/zsh:
 
 ```sh
 cp bootstrap/accounts/staging/terraform.tfvars.example bootstrap/accounts/staging/terraform.tfvars
-terraform -chdir=bootstrap/accounts/staging init
+terraform -chdir=bootstrap/accounts/staging init -backend=false
 terraform -chdir=bootstrap/accounts/staging apply
 terraform -chdir=bootstrap/accounts/staging output github_actions_role_arn
 ```
@@ -102,7 +102,7 @@ PowerShell:
 
 ```powershell
 Copy-Item bootstrap/accounts/prod/terraform.tfvars.example bootstrap/accounts/prod/terraform.tfvars
-terraform -chdir=bootstrap/accounts/prod init
+terraform -chdir=bootstrap/accounts/prod init -backend=false
 terraform -chdir=bootstrap/accounts/prod apply
 terraform -chdir=bootstrap/accounts/prod output github_actions_role_arn
 ```
@@ -111,7 +111,7 @@ sh/bash/zsh:
 
 ```sh
 cp bootstrap/accounts/prod/terraform.tfvars.example bootstrap/accounts/prod/terraform.tfvars
-terraform -chdir=bootstrap/accounts/prod init
+terraform -chdir=bootstrap/accounts/prod init -backend=false
 terraform -chdir=bootstrap/accounts/prod apply
 terraform -chdir=bootstrap/accounts/prod output github_actions_role_arn
 ```
@@ -124,7 +124,7 @@ PowerShell:
 
 ```powershell
 Copy-Item bootstrap/state/terraform.tfvars.example bootstrap/state/terraform.tfvars
-terraform -chdir=bootstrap/state init
+terraform -chdir=bootstrap/state init -backend=false
 terraform -chdir=bootstrap/state apply
 terraform -chdir=bootstrap/state output state_bucket_name
 ```
@@ -133,10 +133,81 @@ sh/bash/zsh:
 
 ```sh
 cp bootstrap/state/terraform.tfvars.example bootstrap/state/terraform.tfvars
-terraform -chdir=bootstrap/state init
+terraform -chdir=bootstrap/state init -backend=false
 terraform -chdir=bootstrap/state apply
 terraform -chdir=bootstrap/state output state_bucket_name
 ```
+
+### Migrate Bootstrap State
+
+After the bootstrap apply succeeds, migrate the bootstrap roots from local state into the same S3 state bucket. Otherwise the state bucket and GitHub Actions roles are still managed by local `terraform.tfstate` files, which are easy to lose and hard to share.
+
+A normal `terraform init` in these roots tries to configure the placeholder S3 backend, so use `terraform init -backend=false` only for the initial local bootstrap. After the state bucket exists, use `terraform init -migrate-state -backend-config backend.hcl` to override the placeholders and copy the local state into S3.
+
+Create ignored backend config files for the bootstrap roots. Use the state account profile for the backend, even when the Terraform provider in `terraform.tfvars` uses the staging or production admin profile. Backend credentials and provider credentials are separate.
+
+`bootstrap/state/backend.hcl`:
+
+```hcl
+bucket       = "poc-002-terraform-state-000000000000"
+key          = "poc-002/bootstrap/state/terraform.tfstate"
+region       = "ap-southeast-2"
+profile      = "state-account"
+encrypt      = true
+use_lockfile = true
+```
+
+`bootstrap/accounts/staging/backend.hcl`:
+
+```hcl
+bucket       = "poc-002-terraform-state-000000000000"
+key          = "poc-002/bootstrap/accounts/staging/terraform.tfstate"
+region       = "ap-southeast-2"
+profile      = "state-account"
+encrypt      = true
+use_lockfile = true
+```
+
+`bootstrap/accounts/prod/backend.hcl`:
+
+```hcl
+bucket       = "poc-002-terraform-state-000000000000"
+key          = "poc-002/bootstrap/accounts/prod/terraform.tfstate"
+region       = "ap-southeast-2"
+profile      = "state-account"
+encrypt      = true
+use_lockfile = true
+```
+
+Replace `000000000000`, the bucket name, region, and profile with your real state account values.
+
+Then migrate each local state file to S3.
+
+PowerShell:
+
+```powershell
+terraform -chdir=bootstrap/state init -migrate-state -backend-config backend.hcl
+terraform -chdir=bootstrap/accounts/staging init -migrate-state -backend-config backend.hcl
+terraform -chdir=bootstrap/accounts/prod init -migrate-state -backend-config backend.hcl
+```
+
+sh/bash/zsh:
+
+```sh
+terraform -chdir=bootstrap/state init -migrate-state -backend-config backend.hcl
+terraform -chdir=bootstrap/accounts/staging init -migrate-state -backend-config backend.hcl
+terraform -chdir=bootstrap/accounts/prod init -migrate-state -backend-config backend.hcl
+```
+
+Answer `yes` when Terraform asks whether to copy the existing local state to the new backend. After migration, run a plan for each root and expect no changes:
+
+```sh
+terraform -chdir=bootstrap/state plan
+terraform -chdir=bootstrap/accounts/staging plan
+terraform -chdir=bootstrap/accounts/prod plan
+```
+
+The local `terraform.tfstate` files are no longer the source of truth after migration. Keep them only as temporary migration backups until the remote plans are clean, then delete the local copies. Future bootstrap changes should be applied from the same roots with the S3 backend initialized.
 
 Finally, replace `000000000000` with the real state account ID in your local dev backend configs:
 
