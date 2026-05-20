@@ -80,11 +80,10 @@ resource "aws_apigatewayv2_api" "websocket" {
 }
 
 resource "aws_apigatewayv2_authorizer" "websocket" {
-  api_id                            = aws_apigatewayv2_api.websocket.id
-  authorizer_type                   = "REQUEST"
-  authorizer_uri                    = module.authorizer_lambda.invoke_arn
-  name                              = "${var.resource_prefix}-websocket-authorizer"
-  authorizer_payload_format_version = "1.0"
+  api_id          = aws_apigatewayv2_api.websocket.id
+  authorizer_type = "REQUEST"
+  authorizer_uri  = module.authorizer_lambda.invoke_arn
+  name            = "${var.resource_prefix}-websocket-authorizer"
   identity_sources = [
     "route.request.header.Authorization",
     "route.request.querystring.token",
@@ -92,11 +91,10 @@ resource "aws_apigatewayv2_authorizer" "websocket" {
 }
 
 resource "aws_apigatewayv2_integration" "connection" {
-  api_id                 = aws_apigatewayv2_api.websocket.id
-  integration_type       = "AWS_PROXY"
-  integration_method     = "POST"
-  integration_uri        = module.connection_lambda.invoke_arn
-  payload_format_version = "1.0"
+  api_id             = aws_apigatewayv2_api.websocket.id
+  integration_type   = "AWS_PROXY"
+  integration_method = "POST"
+  integration_uri    = module.connection_lambda.invoke_arn
 }
 
 resource "aws_apigatewayv2_route" "connect" {

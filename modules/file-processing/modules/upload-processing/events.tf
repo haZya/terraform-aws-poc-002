@@ -110,7 +110,8 @@ resource "aws_cloudwatch_event_target" "guardduty_scan_result" {
   }
 
   retry_policy {
-    maximum_retry_attempts = 5
+    maximum_event_age_in_seconds = 180
+    maximum_retry_attempts       = 5
   }
 
   dead_letter_config {
@@ -138,7 +139,8 @@ resource "aws_cloudwatch_event_target" "upload_status_changed" {
   input_path     = "$.detail"
 
   retry_policy {
-    maximum_retry_attempts = 5
+    maximum_event_age_in_seconds = 180
+    maximum_retry_attempts       = 5
   }
 
   dead_letter_config {

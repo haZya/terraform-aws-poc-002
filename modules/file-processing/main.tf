@@ -5,13 +5,12 @@ data "aws_partition" "current" {}
 data "aws_region" "current" {}
 
 locals {
-  name_prefix         = "${var.app_name}-${var.environment}-file-processing"
-  safe_name_prefix    = replace(lower(local.name_prefix), "/[^a-z0-9-]/", "-")
-  resource_prefix     = substr(local.safe_name_prefix, 0, 40)
-  bucket_prefix       = substr(local.safe_name_prefix, 0, 20)
-  lambda_source_dir   = var.lambda_source_dir == null ? abspath(path.module) : abspath(var.lambda_source_dir)
-  lambda_source_arg   = replace(local.lambda_source_dir, "\\", "/")
-  install_deps_script = replace("${path.module}/modules/lambda-function/install-deps.mjs", "\\", "/")
+  name_prefix        = "${var.app_name}-${var.environment}-file-processing"
+  safe_name_prefix   = replace(lower(local.name_prefix), "/[^a-z0-9-]/", "-")
+  resource_prefix    = substr(local.safe_name_prefix, 0, 40)
+  bucket_prefix      = substr(local.safe_name_prefix, 0, 20)
+  lambda_source_dir  = var.lambda_source_dir == null ? abspath(path.module) : abspath(var.lambda_source_dir)
+  lambda_install_cmd = "npm install --package-lock=false --no-audit --no-fund"
 
   staging_bucket_name = "${local.bucket_prefix}-${data.aws_region.current.id}-${data.aws_caller_identity.current.account_id}-staging"
   upload_bucket_name  = "${local.bucket_prefix}-${data.aws_caller_identity.current.account_id}-uploads"
@@ -22,12 +21,12 @@ resource "terraform_data" "lambda_dependencies" {
   count = var.install_lambda_dependencies ? 1 : 0
 
   triggers_replace = {
-    package_json      = filesha256("${local.lambda_source_dir}/package.json")
-    package_lock_json = fileexists("${local.lambda_source_dir}/package-lock.json") ? filesha256("${local.lambda_source_dir}/package-lock.json") : "none"
+    package_json = filesha256("${local.lambda_source_dir}/package.json")
   }
 
   provisioner "local-exec" {
-    command = "node \"${local.install_deps_script}\" --project \"${local.lambda_source_arg}\""
+    command     = local.lambda_install_cmd
+    working_dir = local.lambda_source_dir
   }
 }
 

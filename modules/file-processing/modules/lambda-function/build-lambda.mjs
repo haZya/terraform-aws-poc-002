@@ -186,11 +186,21 @@ run(esbuildBin, [
 
 if (args.includeSharp) {
   writeFileSync(join(buildDirectory, "package.json"), JSON.stringify({ dependencies: { sharp: packageJson.dependencies.sharp } }, null, 2));
-  run("npm", ["install", "--omit=dev", "--no-audit", "--no-fund"], {
+  run("npm", [
+    "install",
+    "--omit=dev",
+    "--include=optional",
+    "--os=linux",
+    "--cpu=x64",
+    "--libc=glibc",
+    "--no-audit",
+    "--no-fund",
+  ], {
     cwd: buildDirectory,
     env: {
       ...process.env,
       NPM_CONFIG_BIN_LINKS: "false",
+      NPM_CONFIG_INCLUDE_OPTIONAL: "true",
       npm_config_platform: "linux",
       npm_config_arch: "x64",
       npm_config_libc: "glibc",

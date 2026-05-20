@@ -5,12 +5,11 @@ locals {
     include_sharp = var.include_sharp
     files         = { for file in local.source_files : file => filesha256("${var.source_dir}/${file}") }
     package       = filesha256("${var.source_dir}/package.json")
-    package_lock  = fileexists("${var.source_dir}/package-lock.json") ? filesha256("${var.source_dir}/package-lock.json") : "none"
     build_script  = filesha256("${path.module}/build-lambda.mjs")
   }))
-  build_dir   = "${path.root}/.terraform/build/file-processing"
+  build_dir   = replace(abspath("${path.root}/.terraform/build/file-processing"), "\\", "/")
   output_zip  = "${local.build_dir}/${var.function_name}.zip"
-  script_path = replace("${path.module}/build-lambda.mjs", "\\", "/")
+  script_path = replace(abspath("${path.module}/build-lambda.mjs"), "\\", "/")
   source_dir  = replace(var.source_dir, "\\", "/")
   output_path = replace(local.output_zip, "\\", "/")
 }
@@ -23,7 +22,7 @@ resource "terraform_data" "bundle" {
   }
 
   provisioner "local-exec" {
-    command = "node \"${local.script_path}\" --project \"${local.source_dir}\" --entry \"${var.entry}\" --output \"${local.output_path}\"${var.include_sharp ? " --include-sharp" : ""}"
+    command = "node ${local.script_path} --project ${local.source_dir} --entry ${var.entry} --output ${local.output_path}${var.include_sharp ? " --include-sharp" : ""}"
   }
 }
 
