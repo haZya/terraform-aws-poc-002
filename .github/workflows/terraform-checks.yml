@@ -90,7 +90,7 @@ jobs:
     env:
       TF_WORKING_DIR: envs/staging/global
       TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
-      TF_STATE_KEY: poc-001/staging/global/terraform.tfstate
+      TF_STATE_KEY: poc-002/staging/global/terraform.tfstate
       TF_STATE_REGION: ${{ vars.TF_STATE_REGION || vars.AWS_REGION || 'ap-southeast-2' }}
       TF_VAR_aws_account_id: ${{ vars.AWS_ACCOUNT_ID }}
       TF_VAR_region: ${{ vars.TF_GLOBAL_REGION || vars.TF_STATE_REGION || vars.AWS_REGION || 'ap-southeast-2' }}
@@ -243,7 +243,7 @@ jobs:
     env:
       TF_WORKING_DIR: envs/staging/regional
       TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
-      TF_STATE_KEY: poc-001/staging/${{ matrix.region }}/terraform.tfstate
+      TF_STATE_KEY: poc-002/staging/${{ matrix.region }}/terraform.tfstate
       TF_STATE_REGION: ${{ vars.TF_STATE_REGION || vars.AWS_REGION || matrix.region }}
       TF_VAR_aws_account_id: ${{ vars.AWS_ACCOUNT_ID }}
       TF_VAR_region: ${{ matrix.region }}
