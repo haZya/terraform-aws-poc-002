@@ -85,10 +85,12 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      issues: write
+      pull-requests: write
     env:
       TF_WORKING_DIR: envs/staging/global
       TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
-      TF_STATE_KEY: poc-002/staging/global/terraform.tfstate
+      TF_STATE_KEY: poc-001/staging/global/terraform.tfstate
       TF_STATE_REGION: ${{ vars.TF_STATE_REGION || vars.AWS_REGION || 'ap-southeast-2' }}
       TF_VAR_aws_account_id: ${{ vars.AWS_ACCOUNT_ID }}
       TF_VAR_region: ${{ vars.TF_GLOBAL_REGION || vars.TF_STATE_REGION || vars.AWS_REGION || 'ap-southeast-2' }}
@@ -143,8 +145,83 @@ jobs:
             -backend-config="use_lockfile=true"
 
       - name: Terraform plan
+        id: plan
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform plan -lock=false -no-color
+        env:
+          TF_PLAN_OUTPUT: ${{ runner.temp }}/terraform-plan-staging-global.txt
+        run: |
+          set +e
+          terraform plan -lock=false -no-color > "$TF_PLAN_OUTPUT" 2>&1
+          exit_code=$?
+          cat "$TF_PLAN_OUTPUT"
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          exit "$exit_code"
+
+      - name: Comment Terraform plan
+        if: always() && steps.plan.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/github-script@v8
+        env:
+          PLAN_EXIT_CODE: ${{ steps.plan.outputs.exit_code }}
+          PLAN_MARKER: '<!-- terraform-plan:staging-global -->'
+          PLAN_TITLE: 'Terraform Plan: Staging Global'
+          TF_PLAN_OUTPUT: ${{ runner.temp }}/terraform-plan-staging-global.txt
+        with:
+          script: |
+            const fs = require('fs');
+
+            const marker = process.env.PLAN_MARKER;
+            const outputPath = process.env.TF_PLAN_OUTPUT;
+            const rawPlan = fs.existsSync(outputPath)
+              ? fs.readFileSync(outputPath, 'utf8').trim()
+              : 'Terraform plan did not produce output.';
+            const maxPlanLength = 60000;
+            const plan = rawPlan.length > maxPlanLength
+              ? `${rawPlan.slice(0, maxPlanLength)}\n\n[Plan output truncated. See workflow logs for the full output.]`
+              : rawPlan;
+            const status = process.env.PLAN_EXIT_CODE === '0' ? 'succeeded' : 'failed';
+            const body = [
+              marker,
+              `### ${process.env.PLAN_TITLE}`,
+              '',
+              `Terraform plan ${status}.`,
+              '',
+              '<details><summary>Show plan output</summary>',
+              '',
+              '```terraform',
+              plan,
+              '```',
+              '',
+              '</details>',
+            ].join('\n');
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existingComment = comments.find((comment) =>
+              comment.user.type === 'Bot' && comment.body.includes(marker)
+            );
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
 
   plan-staging-regional:
     name: Plan Staging Regional (${{ matrix.region }})
@@ -161,10 +238,12 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      issues: write
+      pull-requests: write
     env:
       TF_WORKING_DIR: envs/staging/regional
       TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
-      TF_STATE_KEY: poc-002/staging/${{ matrix.region }}/terraform.tfstate
+      TF_STATE_KEY: poc-001/staging/${{ matrix.region }}/terraform.tfstate
       TF_STATE_REGION: ${{ vars.TF_STATE_REGION || vars.AWS_REGION || matrix.region }}
       TF_VAR_aws_account_id: ${{ vars.AWS_ACCOUNT_ID }}
       TF_VAR_region: ${{ matrix.region }}
@@ -219,5 +298,80 @@ jobs:
             -backend-config="use_lockfile=true"
 
       - name: Terraform plan
+        id: plan
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform plan -lock=false -no-color
+        env:
+          TF_PLAN_OUTPUT: ${{ runner.temp }}/terraform-plan-staging-regional-${{ matrix.region }}.txt
+        run: |
+          set +e
+          terraform plan -lock=false -no-color > "$TF_PLAN_OUTPUT" 2>&1
+          exit_code=$?
+          cat "$TF_PLAN_OUTPUT"
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          exit "$exit_code"
+
+      - name: Comment Terraform plan
+        if: always() && steps.plan.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/github-script@v8
+        env:
+          PLAN_EXIT_CODE: ${{ steps.plan.outputs.exit_code }}
+          PLAN_MARKER: '<!-- terraform-plan:staging-regional:${{ matrix.region }} -->'
+          PLAN_TITLE: 'Terraform Plan: Staging Regional (${{ matrix.region }})'
+          TF_PLAN_OUTPUT: ${{ runner.temp }}/terraform-plan-staging-regional-${{ matrix.region }}.txt
+        with:
+          script: |
+            const fs = require('fs');
+
+            const marker = process.env.PLAN_MARKER;
+            const outputPath = process.env.TF_PLAN_OUTPUT;
+            const rawPlan = fs.existsSync(outputPath)
+              ? fs.readFileSync(outputPath, 'utf8').trim()
+              : 'Terraform plan did not produce output.';
+            const maxPlanLength = 60000;
+            const plan = rawPlan.length > maxPlanLength
+              ? `${rawPlan.slice(0, maxPlanLength)}\n\n[Plan output truncated. See workflow logs for the full output.]`
+              : rawPlan;
+            const status = process.env.PLAN_EXIT_CODE === '0' ? 'succeeded' : 'failed';
+            const body = [
+              marker,
+              `### ${process.env.PLAN_TITLE}`,
+              '',
+              `Terraform plan ${status}.`,
+              '',
+              '<details><summary>Show plan output</summary>',
+              '',
+              '```terraform',
+              plan,
+              '```',
+              '',
+              '</details>',
+            ].join('\n');
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existingComment = comments.find((comment) =>
+              comment.user.type === 'Bot' && comment.body.includes(marker)
+            );
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }

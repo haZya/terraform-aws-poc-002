@@ -335,7 +335,7 @@ Manual workflow runs can override the region to deploy only one regional stack. 
 
 The deploy workflow passes backend config to `terraform init` at runtime, so state bucket names and account IDs do not need to be committed.
 
-Pull request checks run in `.github/workflows/terraform-checks.yml`. They validate all bootstrap, global, and regional roots, then run staging plans for both global and regional stacks when the pull request branch is in this repository. Pull requests from forks run validation only, so AWS OIDC credentials are not exposed to untrusted fork workflows.
+Pull request checks run in `.github/workflows/terraform-checks.yml`. They validate all bootstrap, global, and regional roots, then run staging plans for both global and regional stacks when the pull request branch is in this repository. Those staging plan jobs also post or update pull request comments with the plan output for review. Pull requests from forks run validation only, so AWS OIDC credentials are not exposed to untrusted fork workflows.
 
 Production destroy is intentionally separated into `.github/workflows/terraform-destroy-prod.yml`. It only runs manually, requires typing `destroy production`, and uses the `production` GitHub Environment required-reviewer gate. It destroys regional stacks first and only destroys the production global stack when `region` is `all`.
 
